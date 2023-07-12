@@ -1,8 +1,8 @@
 package rsp.examples.todos;
 
 import rsp.App;
-import rsp.Component;
-import rsp.dsl.RefDefinition;
+import rsp.stateview.ComponentView;
+import rsp.html.ElementRefDefinition;
 import rsp.jetty.JettyServer;
 import rsp.util.StreamUtils;
 
@@ -12,48 +12,42 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static rsp.dsl.Html.*;
+import static rsp.html.HtmlDsl.*;
 
 public class JettyTodos {
 
-    public static final int DEFAULT_PORT = 8080;
-    
-    public static void main(String[] args) throws Exception {
-        final RefDefinition textInputRef = createRef();
-        final Component<State> render = useState ->
+    public static void main(String[] args) {
+        final ElementRefDefinition textInputRef = createElementRef();
+        final ComponentView<State> view = state -> newState ->
                 html(
-                      body(
-                           div(text("TODO tracker"),
-                           div(style("height", "250px"),
-                               style("overflow", "scroll"),
-                               of(StreamUtils.zipWithIndex(Arrays.stream(useState.get().todos)).map(todo ->
-                                       div(input(attr("type", "checkbox"),
-                                                 when(todo.getValue().done, () -> attr("checked", "checked")),
-                                                 attr("autocomplete", "off"), /* reset the checkbox on Firefox reload current page */
-                                                 on("click", c -> {
-                                                   useState.accept(useState.get().toggleDone(todo.getKey()));
-                                                 })),
-                                           span(when(todo.getValue().done, () -> style("text-decoration", "line-through")),
-                                                text(todo.getValue().text))
-                                          )))),
-                           form(input(textInputRef,
-                                      attr("type", "text"),
-                                      attr("placeholder", "What should be done?")),
-                                button(text("Add todo")),
-                                       on("submit", c -> {
-                                            var inputProps = c.props(textInputRef);
-                                            inputProps.getString("value").thenApply(v -> useState.get().addTodo(v))
-                                                                   .thenAccept(s -> { inputProps.set("value", "");
-                                                                                      useState.accept(s); });
-                                })))));
+                        body(
+                                div(text("TODO tracker"),
+                                        div(style("height", "250px"),
+                                                style("overflow", "scroll"),
+                                                of(StreamUtils.zipWithIndex(Arrays.stream(state.todos)).map(todo ->
+                                                        div(input(attr("type", "checkbox"),
+                                                                        when(todo.getValue().done, () -> attr("checked", "checked")),
+                                                                        attr("autocomplete", "off"), /* reset the checkbox on Firefox reload current page */
+                                                                        on("click", c -> {
+                                                                            newState.set(state.toggleDone(todo.getKey()));
+                                                                        })),
+                                                                span(when(todo.getValue().done, () -> style("text-decoration", "line-through")),
+                                                                        text(todo.getValue().text))
+                                                        )))),
+                                        form(input(textInputRef,
+                                                        attr("type", "text"),
+                                                        attr("placeholder", "What should be done?")),
+                                                button(text("Add todo")),
+                                                on("submit", c -> {
+                                                    var inputProps = c.props(textInputRef);
+                                                    inputProps.getString("value").thenApply(v -> state.addTodo(v))
+                                                            .thenAccept(s -> { inputProps.set("value", "");
+                                                                newState.set(s); });
+                                                })))));
 
-        final int port = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_PORT;
-        final var s = new JettyServer(port,
-                              "",
-                                      new App(initialState(),
-                                              render));
-        s.start();
-        s.join();
+        final var server = new JettyServer<>(8080,"", new App<>(initialState(), view));
+        server.start();
+        server.join();
     }
 
     static State initialState() {
