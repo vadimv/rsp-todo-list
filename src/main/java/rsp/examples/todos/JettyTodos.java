@@ -1,9 +1,9 @@
 package rsp.examples.todos;
 
 import rsp.App;
-import rsp.stateview.ComponentView;
-import rsp.html.ElementRefDefinition;
+import rsp.component.ComponentView;
 import rsp.jetty.JettyServer;
+import rsp.ref.ElementRef;
 import rsp.util.StreamUtils;
 
 import java.util.Arrays;
@@ -17,7 +17,7 @@ import static rsp.html.HtmlDsl.*;
 public class JettyTodos {
 
     public static void main(String[] args) {
-        final ElementRefDefinition textInputRef = createElementRef();
+        final ElementRef textInputRef = createElementRef();
         final ComponentView<State> view = state -> newState ->
                 html(
                         body(
@@ -34,14 +34,14 @@ public class JettyTodos {
                                                                 span(when(todo.getValue().done, () -> style("text-decoration", "line-through")),
                                                                         text(todo.getValue().text))
                                                         )))),
-                                        form(input(textInputRef,
+                                        form(input(elementId(textInputRef),
                                                         attr("type", "text"),
                                                         attr("placeholder", "What should be done?")),
                                                 button(text("Add todo")),
                                                 on("submit", c -> {
-                                                    var inputProps = c.props(textInputRef);
-                                                    inputProps.getString("value").thenApply(v -> state.addTodo(v))
-                                                            .thenAccept(s -> { inputProps.set("value", "");
+                                                    final var textInputProps = c.propertiesByRef(textInputRef);
+                                                    textInputProps.getString("value").thenApply(v -> state.addTodo(v))
+                                                            .thenAccept(s -> { textInputProps.set("value", "");
                                                                 newState.set(s); });
                                                 })))));
 
