@@ -2,9 +2,8 @@ package rsp.examples.todos;
 
 import rsp.App;
 import rsp.component.ComponentView;
-import rsp.jetty.JettyServer;
+import rsp.jetty.WebServer;
 import rsp.ref.ElementRef;
-import rsp.util.StreamUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -29,7 +28,7 @@ public class JettyTodos {
                                                                         when(todo.getValue().done, () -> attr("checked", "checked")),
                                                                         attr("autocomplete", "off"), /* reset the checkbox on Firefox reload current page */
                                                                         on("click", c -> {
-                                                                            newState.set(state.toggleDone(todo.getKey()));
+                                                                            newState.setState(state.toggleDone(todo.getKey()));
                                                                         })),
                                                                 span(when(todo.getValue().done, () -> style("text-decoration", "line-through")),
                                                                         text(todo.getValue().text))
@@ -40,12 +39,12 @@ public class JettyTodos {
                                                 button(text("Add todo")),
                                                 on("submit", c -> {
                                                     final var textInputProps = c.propertiesByRef(textInputRef);
-                                                    textInputProps.getString("value").thenApply(v -> state.addTodo(v))
+                                                    textInputProps.get("value").thenApply(v -> state.addTodo(v.asJsonString().value()))
                                                             .thenAccept(s -> { textInputProps.set("value", "");
-                                                                newState.set(s); });
+                                                                               newState.setState(s); });
                                                 })))));
 
-        final var server = new JettyServer<>(8080,"", new App<>(initialState(), view));
+        final var server = new WebServer(8080, new App<>(initialState(), view));
         server.start();
         server.join();
     }
@@ -65,7 +64,7 @@ public class JettyTodos {
 
         public State toggleDone(int todoIndex) {
             final Todo[] newTodos = new Todo[todos.length];
-            for (int i=0;i<todos.length;i++) {
+            for (int i=0;i < todos.length;i++) {
                 newTodos[i] = i == todoIndex ? new Todo(todos[i].text, !todos[i].done) : todos[i];
             }
             return new State(newTodos, this.edit);
